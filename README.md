@@ -15,7 +15,6 @@
 Затем откройте:
 - **Веб-интерфейс**: http://localhost:8000
 - **Gradio UI**: http://localhost:8000/test
-- **API документация**: http://localhost:8000/docs
 
 ## Возможности
 
