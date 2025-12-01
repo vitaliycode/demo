@@ -14,11 +14,6 @@
 ./start.sh gpu
 ```
 
-После запуска откройте:
-- **Веб-интерфейс**: http://localhost:8000
-- **Gradio UI**: http://localhost:8000/gradio
-- **API документация**: http://localhost:8000/docs
-
 ## Возможности
 
 ### VQA (Visual Question Answering)
