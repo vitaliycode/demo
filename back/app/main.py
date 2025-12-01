@@ -109,9 +109,7 @@ async def periodic_cleanup():
             logger.error(f"Cleanup error: {e}")
 
 
-# =============================================================================
 # API Endpoints
-# =============================================================================
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
@@ -128,7 +126,7 @@ async def root():
         <body>
             <h1>SmolVLM Demo</h1>
             <p>API is running. Visit <a href="/docs">/docs</a> for API documentation.</p>
-            <p>Visit <a href="/ui">/ui</a> for Gradio interface.</p>
+            <p>Visit <a href="/gradio">/gradio</a> for Gradio interface.</p>
         </body>
     </html>
     """
@@ -441,9 +439,7 @@ async def ptt_convert(
         )
 
 
-# =============================================================================
 # Gradio UI Integration
-# =============================================================================
 
 if settings.ENABLE_GRADIO:
     try:
@@ -451,17 +447,21 @@ if settings.ENABLE_GRADIO:
         
         logger.info("Mounting Gradio UI...")
         gradio_app = create_gradio_interface(model_manager)
-        mount_gradio_app(app, gradio_app, path="/test")
-        logger.info("Gradio UI mounted at /test")
+        # Используем mount_gradio_app с show_api=False для отключения проблемного API
+        try:
+            mount_gradio_app(app, gradio_app, path="/gradio", show_api=False)
+            logger.info("Gradio UI mounted at /gradio")
+        except TypeError:
+            # Если show_api не поддерживается, используем обычное монтирование
+            mount_gradio_app(app, gradio_app, path="/gradio")
+            logger.info("Gradio UI mounted at /gradio (without show_api)")
     except ImportError as e:
         logger.warning(f"Gradio UI not available: {e}")
     except Exception as e:
         logger.error(f"Failed to mount Gradio UI: {e}")
 
 
-# =============================================================================
 # Main Entry Point
-# =============================================================================
 
 if __name__ == "__main__":
     import uvicorn

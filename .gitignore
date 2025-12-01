@@ -4,52 +4,54 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
-venv/
-ENV/
-*.egg
 *.egg-info/
 dist/
 build/
-pip-log.txt
-pip-delete-this-directory.txt
 
-# Model cache
-hf-cache/
-models/
-*.bin
-*.safetensors
-*.onnx
+# Virtual environments
+venv/
+env/
+ENV/
 
-# Outputs
-outputs/
-*.txt
-!requirements*.txt
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Environment
 .env
 .env.local
 
-# IDEs
-.vscode/
-.idea/
-*.swp
-*.swo
-.DS_Store
+# Model cache and data
+hf-cache/
+outputs/
+*.safetensors
+models/
 
 # Logs
 *.log
 logs/
-
-# Testing
-.pytest_cache/
-.coverage
-htmlcov/
+logs_*.txt
 
 # Docker
-.dockerignore
+*.pid
 
 # Temporary files
-*.tmp
+tmp/
 temp/
+*.tmp
 
+# Test outputs
+test_inference.py
+.pytest_cache/
+htmlcov/
+.coverage
+
+# Node modules (if any)
+node_modules/

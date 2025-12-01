@@ -3,7 +3,7 @@
 Реализует паттерн singleton с поддержкой нескольких размеров моделей.
 """
 import torch
-from transformers import AutoProcessor, AutoModelForVision2Seq
+from transformers import AutoProcessor, AutoModelForImageTextToText
 from typing import Optional
 import logging
 from PIL import Image
@@ -18,7 +18,7 @@ class ModelManager:
     """Singleton менеджер модели для SmolVLM."""
     
     _instance: Optional['ModelManager'] = None
-    _model: Optional[AutoModelForVision2Seq] = None
+    _model: Optional[AutoModelForImageTextToText] = None
     _processor: Optional[AutoProcessor] = None
     _loaded: bool = False
     _current_model_id: Optional[str] = None
@@ -66,23 +66,23 @@ class ModelManager:
         
         logger.info(f"Устройство: {device}, тип данных: {torch_dtype}")
         
-        # Загрузка процессора
+        # Загрузка процессора для SmolVLM2 (без trust_remote_code, как в рабочем примере)
         logger.info("Загрузка процессора...")
         self._processor = AutoProcessor.from_pretrained(
             model_id,
             cache_dir=settings.TRANSFORMERS_CACHE,
-            local_files_only=settings.HF_LOCAL_ONLY,
-            trust_remote_code=True
+            local_files_only=settings.HF_LOCAL_ONLY
         )
+        logger.info(f"Процессор успешно загружен: {type(self._processor).__name__}")
         
-        # Загрузка модели
+        # Загрузка модели SmolVLM2 (использует AutoModelForImageTextToText)
         logger.info("Загрузка модели...")
-        self._model = AutoModelForVision2Seq.from_pretrained(
+        self._model = AutoModelForImageTextToText.from_pretrained(
             model_id,
             cache_dir=settings.TRANSFORMERS_CACHE,
             local_files_only=settings.HF_LOCAL_ONLY,
             torch_dtype=torch_dtype,
-            trust_remote_code=True
+            _attn_implementation="sdpa"  # Используем SDPA для CPU
         )
         
         # Перенос на устройство
@@ -98,7 +98,7 @@ class ModelManager:
         """Проверка загрузки модели."""
         return self._loaded and self._model is not None
     
-    def get_model(self) -> AutoModelForVision2Seq:
+    def get_model(self) -> AutoModelForImageTextToText:
         """Получение загруженной модели."""
         if not self.is_loaded():
             self.load_model()
@@ -134,7 +134,7 @@ class ModelManager:
         processor = self.get_processor()
         
         if not question.strip():
-            question = "Опиши это изображение подробно."
+            question = "Describe this image in detail."
         
         # Подготовка сообщений
         messages = [
@@ -157,9 +157,16 @@ class ModelManager:
         # Обработка входных данных
         inputs = processor(text=prompt, images=[image], return_tensors="pt")
         
-        # Перенос на устройство
+        # Перенос на устройство с правильным dtype
+        # ВАЖНО: input_ids должны оставаться Long (int64), не конвертируем в float
         device = next(model.parameters()).device
-        inputs = {k: v.to(device) for k, v in inputs.items()}
+        model_dtype = next(model.parameters()).dtype
+        inputs = {
+            k: v.to(device).to(model_dtype) if isinstance(v, torch.Tensor) and v.dtype.is_floating_point 
+            else v.to(device) if isinstance(v, torch.Tensor) 
+            else v 
+            for k, v in inputs.items()
+        }
         
         # Генерация
         max_new_tokens = max_tokens or settings.MAX_NEW_TOKENS
@@ -168,9 +175,7 @@ class ModelManager:
             generated_ids = model.generate(
                 **inputs,
                 max_new_tokens=max_new_tokens,
-                do_sample=False,
-                temperature=settings.TEMPERATURE,
-                repetition_penalty=settings.REPETITION_PENALTY,
+                do_sample=False
             )
         
         # Декодирование
@@ -179,16 +184,8 @@ class ModelManager:
             skip_special_tokens=True
         )
         
-        # Извлечение ответа
-        full_response = generated_texts[0]
-        
-        # Удаление промпта из ответа
-        if prompt in full_response:
-            answer = full_response.split(prompt, 1)[-1].strip()
-        elif question in full_response:
-            answer = full_response.split(question, 1)[-1].strip()
-        else:
-            answer = full_response
+        # Извлечение ответа (SmolVLM2 возвращает полный ответ)
+        answer = generated_texts[0]
         
         # Очистка ответа
         answer = self._clean_response(answer)
@@ -211,41 +208,38 @@ class ModelManager:
         model = self.get_model()
         processor = self.get_processor()
         
-        question = "Извлеки весь текст с этого изображения. Верни только текст, без дополнительного описания."
+        question = "Extract all text from this image. Return only the text, without any additional description."
         
-        # Подготовка сообщений
+        # Подготовка сообщений в формате SmolVLM2
         messages = [
             {
                 "role": "user",
                 "content": [
-                    {"type": "image"},
+                    {"type": "image", "image": image},
                     {"type": "text", "text": question}
                 ]
             }
         ]
         
-        # Применение шаблона чата
-        prompt = processor.apply_chat_template(
+        # Применение шаблона чата и токенизация
+        inputs = processor.apply_chat_template(
             messages,
             add_generation_prompt=True,
-            tokenize=False
+            tokenize=True,
+            return_dict=True,
+            return_tensors="pt"
         )
-        
-        # Обработка входных данных
-        inputs = processor(text=prompt, images=[image], return_tensors="pt")
         
         # Перемещение на устройство
         device = next(model.parameters()).device
-        inputs = {k: v.to(device) for k, v in inputs.items()}
+        inputs = {k: v.to(device) for k, v in inputs.items() if isinstance(v, torch.Tensor)}
         
         # Генерация
         with torch.no_grad():
             generated_ids = model.generate(
                 **inputs,
                 max_new_tokens=settings.MAX_NEW_TOKENS,
-                do_sample=False,
-                temperature=settings.TEMPERATURE,
-                repetition_penalty=settings.REPETITION_PENALTY,
+                do_sample=False
             )
         
         # Декодирование
@@ -254,16 +248,8 @@ class ModelManager:
             skip_special_tokens=True
         )
         
-        # Извлечение текста
-        full_response = generated_texts[0]
-        
-        # Удаление промпта
-        if prompt in full_response:
-            text = full_response.split(prompt, 1)[-1].strip()
-        elif question in full_response:
-            text = full_response.split(question, 1)[-1].strip()
-        else:
-            text = full_response
+        # Извлечение текста (SmolVLM2 возвращает полный ответ)
+        text = generated_texts[0]
         
         # Очистка
         text = self._clean_response(text)
@@ -284,7 +270,7 @@ class ModelManager:
         Returns:
             Описание изображения
         """
-        return self.vqa_inference(image, "Опиши это изображение подробно.")
+        return self.vqa_inference(image, "Describe this image in detail.")
     
     def _clean_response(self, text: str) -> str:
         """

@@ -37,7 +37,7 @@ def create_gradio_interface(model_manager: ModelManager):
         Args:
             image: PIL изображение
             message: Сообщение пользователя
-            history: История чата
+            history: История чата в формате [(user_msg, bot_msg), ...]
             
         Returns:
             Кортеж из (обновленная_история, очищенный_ввод, файл_для_скачивания)
@@ -51,17 +51,9 @@ def create_gradio_interface(model_manager: ModelManager):
             return history, "", None
         
         if not image:
-            history.append({
-                "role": "assistant",
-                "content": "⚠️ Please upload an image first."
-            })
+            # Gradio Chatbot ожидает список кортежей (user_msg, bot_msg)
+            history.append((message, "Пожалуйста, сначала загрузите изображение."))
             return history, "", None
-        
-        # Добавление сообщения пользователя
-        history.append({"role": "user", "content": message})
-        
-        # Добавление placeholder для ассистента
-        history.append({"role": "assistant", "content": "🔄 Обработка..."})
         
         try:
             # Запуск инференса
@@ -69,8 +61,8 @@ def create_gradio_interface(model_manager: ModelManager):
             answer = model_manager.vqa_inference(image, message)
             processing_time = time.time() - start_time
             
-            # Обновление истории с ответом
-            history[-1]["content"] = answer
+            # Добавление в историю в формате (user_message, bot_response)
+            history.append((message, answer))
             
             # Сохранение в файл
             timestamp = int(time.time())
@@ -86,7 +78,8 @@ def create_gradio_interface(model_manager: ModelManager):
             return history, "", str(out_path)
         
         except Exception as e:
-            history[-1]["content"] = f"❌ Error: {str(e)}"
+            # В случае ошибки также используем формат кортежа
+            history.append((message, f"Ошибка: {str(e)}"))
             return history, "", None
     
     def run_ocr(image: Optional[Image.Image]) -> Tuple[str, Optional[str]]:
@@ -100,7 +93,7 @@ def create_gradio_interface(model_manager: ModelManager):
             Кортеж из (извлеченный_текст, файл_для_скачивания)
         """
         if not image:
-            return "⚠️ Please upload an image with text.", None
+            return "Пожалуйста, загрузите изображение с текстом.", None
         
         try:
             # Запуск OCR
@@ -121,7 +114,7 @@ def create_gradio_interface(model_manager: ModelManager):
             return text, str(out_path)
         
         except Exception as e:
-            return f"❌ Error: {str(e)}", None
+            return f"Ошибка: {str(e)}", None
     
     def generate_caption(image: Optional[Image.Image]) -> str:
         """
@@ -134,13 +127,13 @@ def create_gradio_interface(model_manager: ModelManager):
             Текст подписи
         """
         if not image:
-            return "⚠️ Please upload an image."
+            return "Пожалуйста, загрузите изображение."
         
         try:
             caption = model_manager.caption_inference(image)
             return caption
         except Exception as e:
-            return f"❌ Error: {str(e)}"
+            return f"Ошибка: {str(e)}"
     
     # Пользовательский CSS
     custom_css = """
@@ -175,18 +168,16 @@ def create_gradio_interface(model_manager: ModelManager):
     """
     
     # Создание Gradio интерфейса
-    with gr.Blocks(
-        title=f"{settings.APP_NAME}",
-        theme=gr.themes.Soft(),
-        css=custom_css
-    ) as demo:
+    with gr.Blocks(title=f"{settings.APP_NAME}") as demo:
+        # Применяем CSS после создания
+        demo.css = custom_css
         
         # Заголовок
         gr.Markdown(
             f"""
             <div class="header-text">
             
-            # 🤖 {settings.APP_NAME}
+            #{settings.APP_NAME}
             
             **Model:** `{settings.MODEL_NAME}`  
             **Device:** `{settings.DEVICE}` | **Version:** `{settings.VERSION}`
@@ -198,11 +189,11 @@ def create_gradio_interface(model_manager: ModelManager):
         )
         
         # Вкладка VQA
-        with gr.Tab("💬 Visual Question Answering"):
+        with gr.Tab("VQA"):
             gr.Markdown(
                 """
                 <div class="info-box">
-                📸 Upload an image and ask questions about it. The model will analyze the image and provide detailed answers.
+                Загрузите изображение и задавайте вопросы о нём. Модель проанализирует изображение и предоставит детальные ответы.
                 </div>
                 """
             )
@@ -210,31 +201,30 @@ def create_gradio_interface(model_manager: ModelManager):
             with gr.Row(equal_height=True):
                 with gr.Column(scale=1):
                     vqa_image = gr.Image(
-                        label="Upload Image",
+                        label="Загрузите изображение",
                         type="pil",
                         height=500
                     )
                 
                 with gr.Column(scale=1):
                     vqa_chatbot = gr.Chatbot(
-                        label="Conversation",
-                        height=500,
-                        type="messages"
+                        label="Диалог",
+                        height=500
                     )
             
             with gr.Row():
                 vqa_input = gr.Textbox(
-                    label="Your Question",
-                    placeholder="Ask anything about the image...",
+                    label="Ваш вопрос",
+                    placeholder="Задайте любой вопрос об изображении...",
                     lines=2
                 )
             
             with gr.Row():
-                vqa_submit = gr.Button("🚀 Send", variant="primary", scale=2)
-                vqa_clear = gr.Button("🗑️ Clear Chat", scale=1)
+                vqa_submit = gr.Button("Отправить", variant="primary", scale=2)
+                vqa_clear = gr.Button("Очистить чат", scale=1)
             
             with gr.Row():
-                vqa_file = gr.File(label="💾 Download Last Answer")
+                vqa_file = gr.File(label="Скачать последний ответ")
             
             # Обработчики VQA
             vqa_submit.click(
@@ -255,11 +245,11 @@ def create_gradio_interface(model_manager: ModelManager):
             )
         
         # Вкладка OCR
-        with gr.Tab("📝 OCR (Text Recognition)"):
+        with gr.Tab("OCR"):
             gr.Markdown(
                 """
                 <div class="info-box">
-                📄 Extract text from images. Upload an image containing text and get the recognized text output.
+                Извлечение текста из изображений. Загрузите изображение с текстом и получите распознанный текст.
                 </div>
                 """
             )
@@ -267,23 +257,23 @@ def create_gradio_interface(model_manager: ModelManager):
             with gr.Row(equal_height=True):
                 with gr.Column(scale=1):
                     ocr_image = gr.Image(
-                        label="Upload Image with Text",
+                        label="Загрузите изображение с текстом",
                         type="pil",
                         height=500
                     )
                 
                 with gr.Column(scale=1):
                     ocr_output = gr.Textbox(
-                        label="Extracted Text",
+                        label="Извлечённый текст",
                         lines=20,
                         max_lines=30
                     )
             
             with gr.Row():
-                ocr_button = gr.Button("🔍 Extract Text", variant="primary")
+                ocr_button = gr.Button("Извлечь текст", variant="primary")
             
             with gr.Row():
-                ocr_file = gr.File(label="💾 Download Result")
+                ocr_file = gr.File(label="Скачать результат")
             
             # Обработчик OCR
             ocr_button.click(
@@ -293,11 +283,11 @@ def create_gradio_interface(model_manager: ModelManager):
             )
         
         # Вкладка Captioning
-        with gr.Tab("🖼️ Image Captioning"):
+        with gr.Tab("Описание"):
             gr.Markdown(
                 """
                 <div class="info-box">
-                ✨ Generate descriptive captions for your images automatically.
+                Автоматическая генерация описания изображений.
                 </div>
                 """
             )
@@ -305,20 +295,20 @@ def create_gradio_interface(model_manager: ModelManager):
             with gr.Row(equal_height=True):
                 with gr.Column(scale=1):
                     caption_image = gr.Image(
-                        label="Upload Image",
+                        label="Загрузите изображение",
                         type="pil",
                         height=500
                     )
                 
                 with gr.Column(scale=1):
                     caption_output = gr.Textbox(
-                        label="Generated Caption",
+                        label="Сгенерированное описание",
                         lines=10,
                         max_lines=15
                     )
             
             with gr.Row():
-                caption_button = gr.Button("✨ Generate Caption", variant="primary")
+                caption_button = gr.Button("Создать описание", variant="primary")
             
             # Обработчик Caption
             caption_button.click(
@@ -328,44 +318,44 @@ def create_gradio_interface(model_manager: ModelManager):
             )
         
         # Вкладка About
-        with gr.Tab("ℹ️ About"):
+        with gr.Tab("Инфо"):
             gr.Markdown(
                 f"""
-                ## About SmolVLM Demo
+                ## О SmolVLM Demo
                 
-                This application demonstrates the capabilities of the **SmolVLM** multimodal vision-language model.
+                Это приложение демонстрирует возможности мультимодальной модели **SmolVLM** для работы с изображениями и текстом.
                 
-                ### Features
+                ### Возможности
                 
-                - **Visual Question Answering (VQA)**: Ask questions about images and get intelligent answers
-                - **Optical Character Recognition (OCR)**: Extract text from images
-                - **Image Captioning**: Generate descriptive captions automatically
-                - **Multi-turn Conversations**: Continue asking questions about the same image
-                - **Export Results**: Download your results as text files
+                - **VQA (Visual Question Answering)**: Задавайте вопросы об изображениях и получайте интеллектуальные ответы
+                - **OCR (Распознавание текста)**: Извлекайте текст из изображений
+                - **Описание изображений**: Автоматическая генерация описаний для изображений
+                - **Мультивопросные диалоги**: Продолжайте задавать вопросы об одном и том же изображении
+                - **Экспорт результатов**: Скачивайте результаты в виде текстовых файлов
                 
-                ### Model Information
+                ### Информация о модели
                 
-                - **Model Name**: `{settings.MODEL_NAME}`
-                - **Model Size**: `{settings.MODEL_SIZE}`
-                - **Device**: `{settings.DEVICE}`
-                - **Max Tokens**: `{settings.MAX_NEW_TOKENS}`
-                - **Temperature**: `{settings.TEMPERATURE}`
+                - **Название модели**: `{settings.MODEL_NAME}`
+                - **Размер модели**: `{settings.MODEL_SIZE}`
+                - **Устройство**: `{settings.DEVICE}`
+                - **Максимум токенов**: `{settings.MAX_NEW_TOKENS}`
+                - **Температура**: `{settings.TEMPERATURE}`
                 
-                ### API Access
+                ### Доступ к API
                 
-                This application also provides a REST API. Visit [/docs](/docs) for API documentation.
+                Приложение также предоставляет REST API. Посетите [/docs](/docs) для документации API.
                 
-                ### Limitations
+                ### Ограничения
                 
-                - Maximum image size: {settings.MAX_IMAGE_SIZE / (1024*1024):.0f} MB
-                - Maximum image dimension: {settings.MAX_IMAGE_DIMENSION} pixels
-                - Session timeout: {settings.SESSION_TIMEOUT} seconds
+                - Максимальный размер изображения: {settings.MAX_IMAGE_SIZE / (1024*1024):.0f} МБ
+                - Максимальное разрешение: {settings.MAX_IMAGE_DIMENSION} пикселей
+                - Таймаут сессии: {settings.SESSION_TIMEOUT} секунд
                 
-                ### Resources
+                ### Ресурсы
                 
-                - [SmolVLM on HuggingFace](https://huggingface.co/HuggingFaceTB)
-                - [Project Documentation](/docs)
-                - [API Reference](/docs)
+                - [SmolVLM на HuggingFace](https://huggingface.co/HuggingFaceTB)
+                - [Документация проекта](/docs)
+                - [Справочник API](/docs)
                 """
             )
     

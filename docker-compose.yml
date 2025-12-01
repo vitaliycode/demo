@@ -3,9 +3,10 @@ version: '3.8'
 services:
   smolvlm-demo:
     build:
-      context: ./back
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: ./back/Dockerfile
     container_name: smolvlm-demo-cpu
+    image: smolvlm-demo:cpu-latest
     ports:
       - "${PORT:-8000}:8000"
     environment:
@@ -28,4 +29,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 

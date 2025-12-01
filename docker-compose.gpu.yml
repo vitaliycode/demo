@@ -3,9 +3,10 @@ version: '3.8'
 services:
   smolvlm-demo-gpu:
     build:
-      context: ./back
-      dockerfile: Dockerfile.gpu
+      context: .
+      dockerfile: ./back/Dockerfile.gpu
     container_name: smolvlm-demo-gpu
+    image: smolvlm-demo:gpu-latest
     ports:
       - "${PORT:-8000}:8000"
     environment:
@@ -35,4 +36,9 @@ services:
       timeout: 10s
       retries: 3
       start_period: 60s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
 
