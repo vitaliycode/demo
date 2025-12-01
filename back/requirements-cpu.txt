@@ -1,0 +1,7 @@
+# CPU-optimized requirements
+-r requirements.txt
+
+# CPU-specific torch (smaller download)
+--index-url https://download.pytorch.org/whl/cpu
+torch>=2.1.0
+

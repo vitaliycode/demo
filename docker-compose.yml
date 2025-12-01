@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  smolvlm-demo:
+    build:
+      context: ./back
+      dockerfile: Dockerfile
+    container_name: smolvlm-demo-cpu
+    ports:
+      - "${PORT:-8000}:8000"
+    environment:
+      - DEVICE=cpu
+      - TORCH_DTYPE=float32
+      - MODEL_SIZE=${MODEL_SIZE:-500M}
+      - HF_HOME=/data/hf-cache
+      - TRANSFORMERS_CACHE=/data/hf-cache
+      - HF_LOCAL_ONLY=${HF_LOCAL_ONLY:-0}
+      - MAX_NEW_TOKENS=${MAX_NEW_TOKENS:-512}
+      - TEMPERATURE=${TEMPERATURE:-0.7}
+      - ENABLE_GRADIO=${ENABLE_GRADIO:-true}
+    volumes:
+      - ./hf-cache:/data/hf-cache
+      - ./outputs:/app/outputs
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+

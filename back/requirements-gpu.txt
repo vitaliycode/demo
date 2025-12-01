@@ -1,0 +1,6 @@
+# GPU-optimized requirements
+-r requirements.txt
+
+# GPU-specific packages
+torch>=2.1.0+cu121
+

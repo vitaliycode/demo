@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SmolVLM Demo - Multimodal AI</title>
+    <link rel="stylesheet" href="/static/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="logo">🤖 SmolVLM Demo</h1>
+                <p class="subtitle">Multimodal Vision-Language AI</p>
+            </div>
+            <div class="health-status" id="healthStatus">
+                <span class="status-dot"></span>
+                <span class="status-text">Checking...</span>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="tabs">
+            <button class="tab active" data-tab="vqa">💬 Visual Q&A</button>
+            <button class="tab" data-tab="ocr">📝 OCR</button>
+            <button class="tab" data-tab="caption">🖼️ Captioning</button>
+            <button class="tab" data-tab="about">ℹ️ About</button>
+        </div>
+
+        <!-- VQA Tab -->
+        <div class="tab-content active" id="vqa-tab">
+            <div class="section">
+                <h2>Visual Question Answering</h2>
+                <p class="description">Upload an image and ask questions about it</p>
+                
+                <div class="two-column">
+                    <div class="column">
+                        <div class="card">
+                            <h3>Upload Image</h3>
+                            <div class="image-upload">
+                                <input type="file" id="vqaImageInput" accept="image/*" hidden>
+                                <div class="upload-area" id="vqaUploadArea">
+                                    <div class="upload-icon">📸</div>
+                                    <p>Click or drag image here</p>
+                                    <small>Max 10MB • JPG, PNG, GIF, WebP</small>
+                                </div>
+                                <img id="vqaImagePreview" class="image-preview hidden">
+                            </div>
+                        </div>
+                        
+                        <div class="card">
+                            <h3>Ask a Question</h3>
+                            <textarea 
+                                id="vqaQuestion" 
+                                class="input-textarea" 
+                                placeholder="What do you see in this image?"
+                                rows="3"
+                            ></textarea>
+                            <button class="btn btn-primary" id="vqaSubmit">
+                                <span>🚀 Ask Question</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="column">
+                        <div class="card">
+                            <h3>Answer</h3>
+                            <div class="chat-container" id="vqaChatContainer">
+                                <div class="empty-state">
+                                    <div class="empty-icon">💭</div>
+                                    <p>Upload an image and ask a question to get started</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- OCR Tab -->
+        <div class="tab-content" id="ocr-tab">
+            <div class="section">
+                <h2>Optical Character Recognition</h2>
+                <p class="description">Extract text from images</p>
+                
+                <div class="two-column">
+                    <div class="column">
+                        <div class="card">
+                            <h3>Upload Image</h3>
+                            <div class="image-upload">
+                                <input type="file" id="ocrImageInput" accept="image/*" hidden>
+                                <div class="upload-area" id="ocrUploadArea">
+                                    <div class="upload-icon">📄</div>
+                                    <p>Click or drag image with text here</p>
+                                    <small>Max 10MB • JPG, PNG, GIF, WebP</small>
+                                </div>
+                                <img id="ocrImagePreview" class="image-preview hidden">
+                            </div>
+                            <button class="btn btn-primary" id="ocrSubmit">
+                                <span>🔍 Extract Text</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="column">
+                        <div class="card">
+                            <h3>Extracted Text</h3>
+                            <div class="result-container">
+                                <textarea 
+                                    id="ocrResult" 
+                                    class="result-textarea" 
+                                    placeholder="Extracted text will appear here..."
+                                    readonly
+                                    rows="15"
+                                ></textarea>
+                                <button class="btn btn-secondary" id="ocrDownload" disabled>
+                                    <span>💾 Download Text</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Caption Tab -->
+        <div class="tab-content" id="caption-tab">
+            <div class="section">
+                <h2>Image Captioning</h2>
+                <p class="description">Generate descriptive captions for images</p>
+                
+                <div class="two-column">
+                    <div class="column">
+                        <div class="card">
+                            <h3>Upload Image</h3>
+                            <div class="image-upload">
+                                <input type="file" id="captionImageInput" accept="image/*" hidden>
+                                <div class="upload-area" id="captionUploadArea">
+                                    <div class="upload-icon">🖼️</div>
+                                    <p>Click or drag image here</p>
+                                    <small>Max 10MB • JPG, PNG, GIF, WebP</small>
+                                </div>
+                                <img id="captionImagePreview" class="image-preview hidden">
+                            </div>
+                            <button class="btn btn-primary" id="captionSubmit">
+                                <span>✨ Generate Caption</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="column">
+                        <div class="card">
+                            <h3>Generated Caption</h3>
+                            <div class="result-container">
+                                <div class="caption-result" id="captionResult">
+                                    <div class="empty-state">
+                                        <div class="empty-icon">✨</div>
+                                        <p>Upload an image to generate a caption</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- About Tab -->
+        <div class="tab-content" id="about-tab">
+            <div class="section">
+                <div class="card">
+                    <h2>About SmolVLM Demo</h2>
+                    
+                    <div class="about-content">
+                        <h3>🚀 Features</h3>
+                        <ul class="feature-list">
+                            <li><strong>Visual Question Answering:</strong> Ask questions about images and get intelligent, context-aware answers</li>
+                            <li><strong>OCR (Optical Character Recognition):</strong> Extract text from images with high accuracy</li>
+                            <li><strong>Image Captioning:</strong> Automatically generate descriptive captions for your images</li>
+                            <li><strong>Multi-turn Conversations:</strong> Continue asking questions about the same image</li>
+                            <li><strong>Export Results:</strong> Download your results as text files</li>
+                        </ul>
+                        
+                        <h3>💡 How to Use</h3>
+                        <ol class="howto-list">
+                            <li>Select a feature from the tabs above</li>
+                            <li>Upload an image by clicking or dragging it to the upload area</li>
+                            <li>For VQA: Type your question and click "Ask Question"</li>
+                            <li>For OCR: Click "Extract Text" to recognize text in the image</li>
+                            <li>For Captioning: Click "Generate Caption" to create a description</li>
+                            <li>Download or copy your results as needed</li>
+                        </ol>
+                        
+                        <h3>🔧 Technical Details</h3>
+                        <div class="tech-details" id="techDetails">
+                            <p>Loading...</p>
+                        </div>
+                        
+                        <h3>📚 Resources</h3>
+                        <ul class="resource-list">
+                            <li><a href="/docs" target="_blank">API Documentation</a></li>
+                            <li><a href="/ui" target="_blank">Gradio Interface</a></li>
+                            <li><a href="https://huggingface.co/HuggingFaceTB" target="_blank">SmolVLM on HuggingFace</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="footer">
+            <p>Powered by SmolVLM • Built with FastAPI & Vanilla JS</p>
+        </footer>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay hidden" id="loadingOverlay">
+        <div class="loading-spinner"></div>
+        <p class="loading-text">Processing...</p>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast hidden" id="toast">
+        <span class="toast-message"></span>
+    </div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>
+
